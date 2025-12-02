@@ -1,9 +1,12 @@
 import tkinter as tk
 
+GAME_SPEED = 50
+
 class GameObject(object):
     def __init__(self, canvas, item):
         self.canvas = canvas
         self.item = item
+
 
     def get_position(self):
         return self.canvas.coords(self.item)
@@ -13,6 +16,15 @@ class GameObject(object):
 
     def delete(self):
         self.canvas.delete(self.item)
+
+    def update_score_text(self):
+        text = 'Score: %s' % self.score
+        if self.hud_score is None:
+            # Buat teks skor di kanan atas
+            self.hud_score = self.draw_text(self.width - 70, 20, text, 14, fill="#49a2b8")
+        else:
+            # Perbarui teks skor yang sudah ada
+            self.canvas.itemconfig(self.hud_score, text=text)
 
 class Ball(GameObject):
     def __init__(self, canvas, x, y):
@@ -51,6 +63,7 @@ class Ball(GameObject):
             else:
                 self.direction[1] *= -1
 
+#
         for game_object in game_objects:
             if isinstance(game_object, Brick):
                 game_object.hit()
@@ -65,7 +78,7 @@ class Paddle(GameObject):
                                        y - self.height / 2,
                                        x + self.width / 2,
                                        y + self.height / 2,
-                                       fill='#FFB643')
+                                       fill="#50E73C")
         super(Paddle, self).__init__(canvas, item)
 
     def set_ball(self, ball):
@@ -80,7 +93,7 @@ class Paddle(GameObject):
                 self.ball.move(offset, 0)
 
 class Brick(GameObject):
-    COLORS = {1: '#4535AA', 2: '#ED639E', 3: '#8FE1A2'}
+    COLORS = {1: "#4B35AA", 2: '#ED639E', 3: '#8FE1A2'}
     POINTS = {1: 10, 2: 20, 3: 30}  # BARU: Menentukan nilai poin
 
     def __init__(self, canvas, x, y, hits):
@@ -97,8 +110,11 @@ class Brick(GameObject):
 
 # BARU
     def hit(self):
+        if self.hits <= 0:
+            return 0
         points_gained = Brick.POINTS[self.hits, 10]  # BARU: ambil nilai poin sebelum hits dikurangi
         self.hits -= 1
+        
         if self.hits == 0:
             self.delete()
         else:
@@ -121,7 +137,7 @@ class Game(tk.Frame):
 
         self.items = {}
         self.ball = None
-        self.paddle = Paddle(self.canvas, self.width/2, 326)
+        self.paddle = Paddle(self.canvas, self.width/2, 360)
         self.items[self.paddle.item] = self.paddle
         # adding brick with different hit capacities - 3,2 and 1
         for x in range(5, self.width - 5, 75):
@@ -130,7 +146,8 @@ class Game(tk.Frame):
             self.add_brick(x + 37.5, 90, 1)
 
         self.hud = None
-        self.hud_score = None  # BARU: variabel untuk teks skor 
+        self.hud_score = None  # BARU: variabel untuk teks skor
+        self.hud_lives = None 
         self.setup_game()
         self.canvas.focus_set()
         self.canvas.bind('<Left>',
@@ -142,7 +159,7 @@ class Game(tk.Frame):
            self.add_ball()
            self.update_lives_text()
            self.score = 0  # BARU: reset skor
-           self.update_score_teks()  # BARU: menampilkan skor n0
+           self.update_score_teks()  # BARU: menampilkan skor 0
            self.text = self.draw_text(300, 200,
                                       'Press Space to start')
            self.canvas.bind('<space>', lambda _: self.start_game())
@@ -409,6 +426,11 @@ class Game(tk.Frame):
         ball_coords = self.ball.get_position()
         items = self.canvas.find_overlapping(*ball_coords)
         objects = [self.items[x] for x in items if x in self.items]
+        object = [obj for obj in objects if obj is not self.ball]
+
+        if not object:
+            return 
+        
         self.ball.collide(objects)
         # BARU
         for game_object in objects:
