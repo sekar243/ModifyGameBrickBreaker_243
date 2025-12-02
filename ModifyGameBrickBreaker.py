@@ -1,3 +1,5 @@
+import tkinter as tk
+
 class GameObject(object):
     def __init__(self, canvas, item):
         self.canvas = canvas
@@ -79,6 +81,7 @@ class Paddle(GameObject):
 
 class Brick(GameObject):
     COLORS = {1: '#4535AA', 2: '#ED639E', 3: '#8FE1A2'}
+    POINTS = {1: 10, 2: 20, 3: 30}  # BARU: Menentukan nilai poin
 
     def __init__(self, canvas, x, y, hits):
         self.width = 75
@@ -92,18 +95,22 @@ class Brick(GameObject):
                                        fill=color, tags='brick')
         super(Brick, self).__init__(canvas, item)
 
+# BARU
     def hit(self):
+        points_gained = Brick.POINTS[self.hits, 10]  # BARU: ambil nilai poin sebelum hits dikurangi
         self.hits -= 1
         if self.hits == 0:
             self.delete()
         else:
             self.canvas.itemconfig(self.item,
                                    fill=Brick.COLORS[self.hits])
+        return points_gained # BARU: mengembalikan nilai pion ke pemanggil
             
 class Game(tk.Frame):
     def __init__(self, master):
         super(Game, self).__init__(master)
         self.lives = 3
+        self.score = 0  # BARU: Mulai dengan skor nol
         self.width = 610
         self.height = 400
         self.canvas = tk.Canvas(self, bg='#D6D1F5',
@@ -123,6 +130,7 @@ class Game(tk.Frame):
             self.add_brick(x + 37.5, 90, 1)
 
         self.hud = None
+        self.hud_score = None  # BARU: variabel untuk teks skor 
         self.setup_game()
         self.canvas.focus_set()
         self.canvas.bind('<Left>',
@@ -133,6 +141,8 @@ class Game(tk.Frame):
     def setup_game(self):
            self.add_ball()
            self.update_lives_text()
+           self.score = 0  # BARU: reset skor
+           self.update_score_teks()  # BARU: menampilkan skor n0
            self.text = self.draw_text(300, 200,
                                       'Press Space to start')
            self.canvas.bind('<space>', lambda _: self.start_game())
@@ -276,6 +286,7 @@ class Paddle(GameObject):
 
 class Brick(GameObject):
     COLORS = {1: '#4535AA', 2: '#ED639E', 3: '#8FE1A2'}
+    POINTS = {1: 10, 2: 20, 3: 30} 
 
     def __init__(self, canvas, x, y, hits):
         self.width = 75
@@ -289,19 +300,27 @@ class Brick(GameObject):
                                        fill=color, tags='brick')
         super(Brick, self).__init__(canvas, item)
 
+
     def hit(self):
+        if self.hits <= 0:
+            return 0 
+
+        points_gained = Brick.POINTS.get(self.hits, 10)
         self.hits -= 1
+        
         if self.hits == 0:
-            self.delete()
+            self.delete() 
         else:
             self.canvas.itemconfig(self.item,
                                    fill=Brick.COLORS[self.hits])
-
+        
+        return points_gained
 
 class Game(tk.Frame):
     def __init__(self, master):
         super(Game, self).__init__(master)
         self.lives = 3
+        self.score = 0
         self.width = 610
         self.height = 400
         self.canvas = tk.Canvas(self, bg='#D6D1F5',
@@ -313,6 +332,10 @@ class Game(tk.Frame):
         self.items = {}
         self.ball = None
         self.paddle = Paddle(self.canvas, self.width/2, 326)
+        self.hud_score = None # ID objek skor HUD
+        self.hud_lives = None # ID objek nyawa HUD
+        self.game_started = False
+        self.running = False
         self.items[self.paddle.item] = self.paddle
         # adding brick with different hit capacities - 3,2 and 1
         for x in range(5, self.width - 5, 75):
@@ -387,8 +410,12 @@ class Game(tk.Frame):
         items = self.canvas.find_overlapping(*ball_coords)
         objects = [self.items[x] for x in items if x in self.items]
         self.ball.collide(objects)
-
-
+        # BARU
+        for game_object in objects:
+            if isinstance(game_object, Brick):
+                points = game_object.hit()
+                self.score += points
+                self.update_score_text()
 
 if __name__ == '__main__':
     root = tk.Tk()
